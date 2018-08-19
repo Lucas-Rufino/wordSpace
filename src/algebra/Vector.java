@@ -77,7 +77,8 @@ public class Vector {
 	
 	public float norm() {
 		float sum = 0.0f;
-		for(float value : this.values) {
+		for(int i=0 ; i<this.size ; i++) {
+			float value = this.values[i];
 			sum += value * value;
 		}
 		return (float) Math.sqrt(sum);
