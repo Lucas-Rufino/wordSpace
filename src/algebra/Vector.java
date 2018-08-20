@@ -13,7 +13,7 @@ public class Vector {
 	}
 	
 	public Vector() {
-		this(10);
+		this(16);
 	}
 	
 	private int indexOf(int key) {
@@ -67,6 +67,12 @@ public class Vector {
 		}
 	}
 	
+	private void append(int key, float value) {
+		if(value != 0.0f) {
+			this.add(this.size, key, value);
+		}
+	}
+	
 	public float get(int key) {
 		int i = this.indexOf(key);
 		if(i >= 0) {
@@ -83,7 +89,14 @@ public class Vector {
 		}
 		return (float) Math.sqrt(sum);
 	}
-
+	
+	public void normalize() {
+		float norm = this.norm();
+		for(int i=0 ; i<this.size ; i++) {
+			this.values[i] /= norm;
+		}
+	}
+	
 	public float dot(Vector vctr) {
 		int i = 0, j = 0;
 		float sum = 0.0f;
@@ -100,6 +113,44 @@ public class Vector {
 		}
 		return sum;
 	}
+	
+	public Vector sub(Vector base) {
+		Vector vctr = new Vector(this.size + base.size);
+		int i = 0;
+		int j = 0;
+		while(i < this.size && j < base.size) {
+			int keyI = this.keys[i];
+			int keyJ = base.keys[j];
+			if(keyI == keyJ) {
+				vctr.append(keyI, this.values[i++] - base.values[j++]);
+			} else if(keyI < keyJ) { 
+				vctr.append(keyI,  this.values[i++]);
+			} else { 
+				vctr.append(keyJ, -base.values[j++]);
+			}
+		}
+		while(i < this.size) {
+			int key = this.keys[i];
+			vctr.append(key,  this.values[i++]);
+		}
+		while(j < base.size) {
+			int key = base.keys[j];
+			vctr.append(key, -base.values[j++]);
+		}
+		vctr.trim();
+		return vctr;
+	}
+	
+	public void trim() {
+		int[] keys = new int[this.size];
+		float[] values = new float[this.size];
+		for(int i=0 ; i<this.size ; i++) {
+			keys[i] = this.keys[i];
+			values[i] = this.values[i];
+		}
+		this.keys = keys;
+		this.values = values;
+ 	}
 	
 	public int size() {
 		return this.size;
@@ -120,51 +171,42 @@ public class Vector {
 		}
 		return str;
 	}
-	
-	public static void main(String[] args) {
-		
-		Vector v0 = new Vector();
-		v0.put(0, 1.0f);
-		v0.put(1, 1.0f);
-		v0.put(2, 1.0f);
-		
-		Vector v1 = new Vector();
-		v1.put(0, 1.0f);
-		v1.put(1, 1.0f);
-		v1.put(2, 1.0f);
-		
-		Vector v2 = new Vector();
-		v2.put(0, 1.0f);
-		v2.put(1, 1.0f);
-		v2.put(2, 1.0f);
-		
-		Vector v3 = new Vector();
-		v3.put(3, 1.0f);
-		v3.put(4, 1.0f);
-		
-		Vector v4 = new Vector();
-		v4.put(3, 1.0f);
-		v4.put(4, 1.0f);
-		
-		Vector v5 = new Vector();
-		v5.put(2,-1.0f);
-		v5.put(5, 1.0f);
-		
-		System.out.println("get - - - - -");
-		System.out.println(v0.get(2));
-		System.out.println(v0.get(4));
-		
-		System.out.println("\nnorm - - - - -");
-		System.out.println(v0.norm());
-		System.out.println(v3.norm());
-		System.out.println(v5.norm());
-		
-		System.out.println("\ndot - - - - -");
-		System.out.println(v0.dot(v3));
-		System.out.println(v0.dot(v5));
-		System.out.println(v5.dot(v3));
-		
-		System.out.println("\ntoString - - - - -");
-		System.out.println(v5);
+
+	public Vector multiply(float value) {
+		Vector vctr = new Vector(this.size);
+		if(value != 0.0f) {
+			for(int i=0 ; i<this.size ; i++) {
+				int key = this.keys[i];
+				vctr.append(key, this.values[i] * value);
+			}
+		}
+		return vctr;
+	}
+
+	public Vector add(Vector base) {
+		Vector vctr = new Vector(this.size + base.size);
+		int i = 0;
+		int j = 0;
+		while(i < this.size && j < base.size) {
+			int keyI = this.keys[i];
+			int keyJ = base.keys[j];
+			if(keyI == keyJ) {
+				vctr.append(keyI, this.values[i++] + base.values[j++]);
+			} else if(keyI < keyJ) { 
+				vctr.append(keyI,  this.values[i++]);
+			} else { 
+				vctr.append(keyJ, base.values[j++]);
+			}
+		}
+		while(i < this.size) {
+			int key = this.keys[i];
+			vctr.append(key,  this.values[i++]);
+		}
+		while(j < base.size) {
+			int key = base.keys[j];
+			vctr.append(key, base.values[j++]);
+		}
+		vctr.trim();
+		return vctr;
 	}
 }

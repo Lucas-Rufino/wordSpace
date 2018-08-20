@@ -5,15 +5,23 @@ import java.util.Random;
 public class Matrix {
 
 	private int size;
+	private int lineSize;
 	private Vector[] vectors;
+	
+	public Matrix(Vector[] vectors, int lineSize) {
+		this.size = vectors.length;
+		this.lineSize = lineSize;
+		this.vectors = vectors;
+	}
 	
 	public Matrix(int cap) {
 		this.vectors = new Vector[cap];
+		this.lineSize = -1;
 		this.size = cap;
 	}
 	
 	public Matrix() {
-		this(10);
+		this(16);
 	}
 	
 	public void put(int r, int c, float value, int size) {
@@ -26,10 +34,10 @@ public class Matrix {
 	}
 	
 	public void put(int r, int c, float value) {
-		this.put(r, c, value, 10);
+		this.put(r, c, value, 16);
 	}
 	
-	public void put(int r, Vector v) {
+	private void put(int r, Vector v) {
 		this.vectors[r] = v;
 	}
 	
@@ -40,7 +48,7 @@ public class Matrix {
 		return 0.0f;
 	}
 	
-	public Vector get(int r) {
+	private Vector get(int r) {
 		if(this.vectors[r] != null) {
 			return this.vectors[r];
 		}
@@ -91,6 +99,7 @@ public class Matrix {
 		float[] norms = this.norm();
 		Matrix m = new Matrix(this.size);
 		for(int s=0 ; s<this.size ; s++) {
+			m.put(s, s, 1.0f);
 			int size = idxs[s];
 			int[] keys = dots[s];
 			for(int i=0 ; i<size ; i++) {
@@ -103,15 +112,85 @@ public class Matrix {
 						float dot = row1.dot(row2);
 						dot /= (norms[k1] * norms[k2]);
 						dot = Math.max(-1.0f, Math.min(1.0f, dot));
-						m.put(k1, k2, dot, lens[k1]);
-						m.put(k2, k1, dot, lens[k2]);
+						m.put(k1, k2, dot);
+						m.put(k2, k1, dot);
 					}
 				}
-				m.put(k1, k1, 1.0f);
 			}
-			System.out.println(s);
 		}
 		return m;
+	}
+	
+	private int argmax(float[] values) {
+		float max = Float.NEGATIVE_INFINITY;
+		int size = values.length;
+		int index = 0;
+		for(int i=0 ; i<size ; i++) {
+			float value = values[i];
+			if(max < value) {
+				max = value;
+				index = i;
+			}
+		}
+		return index;
+	}
+	
+	private void maximum(float[] weights, Vector vctr) {
+		int size = vctr.size();
+		int[] keys = vctr.keys();
+		float[] values = vctr.values();
+		for(int i=0 ; i<size ; i++) {
+			int key = keys[i];
+			float weight = 1 - weights[key];
+			weight = Math.max(weight, Math.abs(values[i]));
+			weights[key] = 1 - weight;
+		}
+	}
+	
+	private void nextValues(float[] data, float[] weights) {
+		for(int i=0 ; i<this.size ; i++) {
+			Vector vctr = this.get(i);
+			float total = 0.0f;
+			int size = vctr.size();
+			int[] keys = vctr.keys();
+			float[] values = vctr.values();
+			for(int k=0 ; k<size ; k++) {
+				int key = keys[k];
+				float multi = weights[key] * values[k];
+				total += multi * multi;
+			}
+			data[i] = total;
+		}
+	}
+	
+	public Matrix fit(int size) {
+		int count = 0;
+		Vector[] vectors = new Vector[size];
+		float[] weights = new float[this.size];
+		for(int i=0 ; i<this.size ; i++) {
+			weights[i] = 1.0f;
+		}
+		float[] values = this.norm();
+		for(int s=0 ; s<size ; s++) {
+			Vector vctr = new Vector();
+			int index = this.argmax(values);
+			Vector base = this.get(index);
+			for(int i=0 ; i<count ; i++) {
+				Vector aux = vectors[i];
+				vctr = vctr.add(aux.multiply(base.dot(aux)));
+			}
+			vctr = base.sub(vctr);
+			vctr.normalize();
+			vectors[count++] = vctr;
+			maximum(weights, base);
+			nextValues(values, weights);
+		}
+		return new Matrix(vectors, this.size);
+	}
+	
+	public Matrix fit() {
+		int size = (int) Math.ceil(Math.sqrt(this.size));
+		return this.fit(size);
 	}
 	
 	public String toString(){
@@ -128,41 +207,41 @@ public class Matrix {
 		return str;
 	}
 	
-	public static Matrix random(int r, int c, int elem) {
-		Matrix m = new Matrix(r);
+	public static Matrix random(int size, int den) {
+		Matrix m = new Matrix(size);
 		Random rd = new Random();
-		int[] rds = new int[c];
-		for(int i=0 ; i<c ; i++) {
+		int[] rds = new int[size];
+		for(int i=0 ; i<size ; i++) {
 			rds[i] = i;
 		}
-		for(int i=0 ; i<r ; i++) {
+		for(int i=0 ; i<size ; i++) {
 			Vector v = new Vector();
-			for(int j=0 ; j<elem ; j++) {
-				int num = rd.nextInt(c);
+			for(int j=0 ; j<den ; j++) {
+				int num = rd.nextInt(size);
 				int aux = rds[j];
 				rds[j] = rds[num];
 				rds[num] = aux;
 			}
-			for(int j=0 ; j<elem ; j++) {
+			for(int j=0 ; j<den ; j++) {
 				int value = (rd.nextInt(2) != 0 ? 1 : -1);
 				v.put(rds[j], value);
 			}
 			v.put(i, 1);
 			m.put(i, v);
-			System.out.println(i);
 		}
 		return m;
 	}
 	
 	public void printDense(int round) {
-		for(int i=0 ; i<this.vectors.length ; i++) {
+		int shape = (this.lineSize != -1 ? this.lineSize : this.size);
+		for(int i=0 ; i<this.size ; i++) {
 			Vector v = this.get(i);
 			int count = 0;
 			int size = v.size();
 			int[] keys = v.keys();
 			float[] values = v.values();
 			System.out.printf("[");
-			for(int j=0 ; j<this.vectors.length ; j++) {
+			for(int j=0 ; j<shape  ; j++) {
 				if(count < size && keys[count] == j) {
 					if(values[count] >= 0) {
 						System.out.printf(" %." + round + "f\t", values[count]);
@@ -198,15 +277,18 @@ public class Matrix {
 		X.put(5, 5, 1.0f);
 //		System.out.println(X);
 		
-		System.out.println("Random...");
-		X = Matrix.random(100000, 100000, 100);
-//		X.printDense(3);
-//		System.out.println(X);
-		System.out.println("Cosine...");
 		long t0 = System.currentTimeMillis();
-//		Matrix cosine = X.cosine();
+		X = Matrix.random(100000, 100);
+//		X.printDense(3);
+		System.out.println("Random... "  + ((System.currentTimeMillis() - t0)/1000.0) + "s");
+		t0 = System.currentTimeMillis();
+		Matrix cosine = X.cosine();
+		System.out.println("\nCosine... " + ((System.currentTimeMillis() - t0)/1000.0) + "s");
 //		cosine.printDense(3);
-		System.out.println("Fim... " + ((System.currentTimeMillis() - t0)/1000.0) + "s");
+		t0 = System.currentTimeMillis();
+		Matrix trans = cosine.fit();
+		System.out.println("\n" + trans.size + " Vectors... " + ((System.currentTimeMillis() - t0)/1000.0) + "s");
+//		trans.printDense(3);
 //		System.out.println(cosine);
 //		Vector weight = new Vector();
 //		Vector values = cosine.norm();
