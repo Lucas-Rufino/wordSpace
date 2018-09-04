@@ -11,24 +11,36 @@ def normalize(text, lower=False):
 def tokenize(text):
     return text.split()
 
+def mapping(sequence):
+    indexes = list(set(sequence))
+    words = {k:i for i, k in enumerate(indexes)}
+    return indexes, words
+
 _lemma = None
-def lemmatize(word):
+def lemmatize(indexes):
     global _lemma
-    if type(word) == list:
-        return list(map(lemmatize, word))
+    idxLemma = []
+    dctLemma = {}
     if _lemma is None:
         _lemma = nltk.stem.WordNetLemmatizer()
-    try:
-        return _lemma.lemmatize(word)
-    except Exception:
-        nltk.download('wordnet')
-        return _lemma.lemmatize(word)
+    for word in indexes:
+        try:
+            w = _lemma.lemmatize(word)
+        except Exception:
+            nltk.download('wordnet')
+            w = _lemma.lemmatize(word)
+        i = len(idxLemma)
+        dctLemma.setdefault(w, []).append(i)
+    return idxLemma, dctLemma
 
 def thesaurus(word):
-    synonyms, antonyms = set(), set()
+    word = word.lower()
+    synonyms, antonyms = [word], []
     for syn in nltk.corpus.wordnet.synsets(word):
         for l in syn.lemmas():
-            synonyms.add(l.name())
+            synonyms.append(l.name().lower())
             if l.antonyms():
-                antonyms.add(l.antonyms()[0].name())
+                antonyms.append(l.antonyms()[0].name().lower())
+    synonyms = [s for s in set(synonyms) if '_' not in s and '-' not in s]
+    antonyms = [a for a in set(antonyms) if '_' not in a and '-' not in a]
     return synonyms, antonyms
